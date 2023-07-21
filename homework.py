@@ -41,8 +41,7 @@ HOMEWORK_VERDICTS = {
 
 
 def check_tokens():
-    """Проверка на наличие необходимых токенов"""
-
+    """Проверка на наличие необходимых токенов."""
     for var in [PRACTICUM_TOKEN, TELEGRAM_TOKEN, TELEGRAM_CHAT_ID]:
         if var is None:
             logger.critical(
@@ -52,8 +51,7 @@ def check_tokens():
 
 
 def send_message(bot, message):
-    """Отправка сообщения пользователю"""
-
+    """Отправка сообщения пользователю."""
     try:
         bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=message)
         logger.debug("Сообщение было успешно отправлено!")
@@ -64,8 +62,7 @@ def send_message(bot, message):
 
 
 def get_api_answer(timestamp):
-    """Запрос к апи и получения от него ответа"""
-
+    """Запрос к апи и получения от него ответа."""
     payload = {"from_date": timestamp}
     try:
         response = requests.get(ENDPOINT, headers=HEADERS, params=payload)
@@ -82,8 +79,7 @@ def get_api_answer(timestamp):
 
 
 def check_response(response):
-    """Проверка ответа от апи"""
-
+    """Проверка ответа от апи."""
     if not isinstance(response, dict):
         log = "Ответ от апи пришел в неверном формате"
         logger.error(log)
@@ -99,8 +95,7 @@ def check_response(response):
 
 
 def parse_status(homework):
-    """Получение статуса домашней работы"""
-
+    """Получение статуса домашней работы."""
     homework_status = homework.get("status")
     if not homework_status:
         raise exceptions.InvalidStatusError("Отсутствует статуса")
@@ -123,7 +118,6 @@ def parse_status(homework):
 
 def main():
     """Основная логика работы бота."""
-
     check_tokens()
     bot = telegram.Bot(token=TELEGRAM_TOKEN)
     timestamp = int(time.time())
