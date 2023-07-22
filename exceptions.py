@@ -24,3 +24,7 @@ class InvalidStatusError(Exception):
 
 class HomeWorkKeyError(Exception):
     pass
+
+
+class InvalidTokenException(Exception):
+    pass
