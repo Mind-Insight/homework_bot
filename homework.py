@@ -42,12 +42,14 @@ HOMEWORK_VERDICTS = {
 
 def check_tokens():
     """Проверка на наличие необходимых токенов."""
-    for var in [PRACTICUM_TOKEN, TELEGRAM_TOKEN, TELEGRAM_CHAT_ID]:
-        if var is None:
-            var_name = [
-                name for name, value in globals().items() if value is var
-            ][0]
-            log = f"Отсутствует обязательная переменная окружения {var_name}"
+    tokens = {
+        "PRACTICUM_TOKEN": PRACTICUM_TOKEN,
+        "TELEGRAM_TOKEN": TELEGRAM_TOKEN,
+        "TELEGRAM_CHAT_ID": TELEGRAM_CHAT_ID,
+    }
+    for key, value in tokens.items():
+        if value is None:
+            log = f"Отсутствует обязательная переменная окружения {key}"
             logger.critical(log)
             raise exceptions.InvalidTokenException(log)
 
@@ -58,9 +60,10 @@ def send_message(bot, message):
         bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=message)
         logger.debug("Сообщение было успешно отправлено!")
     except Exception as error:
-        raise exceptions.SendMessageError(
-            f"Произошла ошибка при отправке сообщения {error}"
-        )
+        # raise exceptions.SendMessageError(
+        #     f"Произошла ошибка при отправке сообщения {error}"
+        # )
+        logger.error(f"Произошла ошибка при отправке сообщения {error}")
 
 
 def get_api_answer(timestamp):
@@ -80,33 +83,31 @@ def check_response(response):
     """Проверка ответа от апи."""
     if not isinstance(response, dict):
         raise TypeError("Ответ пришел в неверном формате")
-    if (v := response.get("homeworks")) is None:
+    if (homeworks := response.get("homeworks")) is None:
         raise exceptions.InvalidApiAnswer(
             "В ответе апи отсутствуют домашние работы"
         )
-    if not isinstance(v, list):
+    if not isinstance(homeworks, list):
         raise TypeError("Неверный тип данных домашних работ")
 
 
 def parse_status(homework):
     """Получение статуса домашней работы."""
-    homework_status = homework.get("status")
-    if not homework_status:
+    if not (homework_status := homework.get("status")):
         raise exceptions.InvalidStatusError(
             "Отсутствует статус домашней работы"
         )
 
-    try:
-        verdict = HOMEWORK_VERDICTS[homework_status]
-        homework_name = homework["homework_name"]
-    except KeyError as error:
-        if "homework_name" in str(error):
-            raise exceptions.HomeWorkKeyError(
-                "Отсутствует название домашней работы"
-            )
+    if not (homework_name := homework.get("homework_name")):
+        raise exceptions.HomeWorkKeyError(
+            "Отсутствует название домашней работы"
+        )
+
+    if not (verdict := HOMEWORK_VERDICTS.get(homework_status)):
         raise exceptions.InvalidStatusError(
             "Неизвестный статус домашней работы"
         )
+
     return f'Изменился статус проверки работы "{homework_name}". {verdict}'
 
 
@@ -122,15 +123,20 @@ def main():
             response = get_api_answer(timestamp=current_timestamp)
             check_response(response)
             current_timestamp = response["current_date"]
-            status = parse_status(response["homeworks"][0])
-            if status == current_status:
-                logger.debug("Статус остался прежним")
+            if not (homeworks := response["homeworks"]):
+                logger.debug("В данный момент список домашек пуст")
             else:
-                current_status = status
-                send_message(bot, current_status)
+                status = parse_status(homeworks[0])
+                if status == current_status:
+                    logger.debug("Статус остался прежним")
+                else:
+                    current_status = status
+                    send_message(bot, current_status)
 
         except Exception as error:
             logger.error(error, exc_info=True)
+            error_message = f"Произошла ошибка: {error}"
+            send_message(bot, error_message)
 
         finally:
             time.sleep(RETRY_PERIOD)
